@@ -9,6 +9,9 @@ readme = "README.md"
 python = "3.13.*"
 uvicorn = "^0.34.0"
 fastapi = {extras = ["standard"], version = "^0.115.6"}
+sqlalchemy = "^2.0.36"
+pydantic-settings = "^2.7.1"
+alembic = "^1.14.0"
 
 [tool.poetry.group.dev.dependencies]
 gh = "^0.0.4"
@@ -34,7 +37,7 @@ lint = 'ruff check . && ruff check . --diff'
 format = 'ruff check . --fix && ruff format .'
 
 [tool.ruff]
-line-length = 79
+line-length = 200
 extend-exclude = ['migrations']
 
 [tool.ruff.lint]
