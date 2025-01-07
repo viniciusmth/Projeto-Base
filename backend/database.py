@@ -6,6 +6,6 @@ from backend.settings import Settings
 engine = create_engine(Settings().DATABASE_URL)
 
 
-def init_session():
+def init_session():  # pragma: no cover
     with Session(engine) as session:
         yield session

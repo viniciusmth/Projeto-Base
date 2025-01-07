@@ -7,6 +7,7 @@ from sqlalchemy.pool import StaticPool
 from backend.app import app
 from backend.database import init_session
 from backend.models import User, mapper_registry
+from backend.security import password_to_hash
 
 
 @pytest.fixture
@@ -31,8 +32,10 @@ def session():
 
 @pytest.fixture
 def user(session):
-    user = User(username='vini', email='vini@vini.com', password='123')
+    pwd = '123'
+    user = User(username='vini', email='vini@vini.com', password=password_to_hash(pwd))
     session.add(user)
     session.commit()
     session.refresh(user)
+    user.clean_password = pwd
     return user

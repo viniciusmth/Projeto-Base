@@ -1,13 +1,14 @@
 from http import HTTPStatus
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.database import init_session
 from backend.models import User
-from backend.schemas import Message, UserDB, UserList, UserName, UserPublic
-from backend.security import password_to_hash, hash_to_password
+from backend.schemas import Message, Token, UserDB, UserList, UserName, UserPublic
+from backend.security import create_access_token, hash_to_password, password_to_hash, get_current_user
 
 app = FastAPI()
 
@@ -23,14 +24,10 @@ def register_user(user: UserDB, session=Depends(init_session)):
     db_user = session.scalar(select(User).where((user.username == User.username) or (user.email == User.email)))
     if db_user:
         if db_user.username == user.username:
-            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='User already exists')     
+            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='User already exists')
         elif db_user.email == user.email:
             raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='Email already exists')
-    db_user = User(
-        username=user.username,
-        email=user.email,
-        password=password_to_hash(user.password)
-        )
+    db_user = User(username=user.username, email=user.email, password=password_to_hash(user.password))
     session.add(db_user)
     session.commit()
     session.refresh(db_user)
@@ -38,7 +35,7 @@ def register_user(user: UserDB, session=Depends(init_session)):
 
 
 @app.put('/users/{user_id}', response_model=UserPublic)
-def put_user(user_id: int, user: UserDB, session=Depends(init_session)):
+def put_user(user_id: int, user: UserDB, session=Depends(init_session), is_logged=Depends(get_current_user)):
     db_user = session.scalar(select(User).where(user_id == User.id))
     if db_user:
         if not session.scalar(select(User).where((user.username == User.username) or (user.email == User.email))):
@@ -72,3 +69,12 @@ def get_user_name(user_id: int, session=Depends(init_session)):
         return {'username': str(db_user.username)}
     else:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="User doesn't exist")
+
+
+@app.post('/token', response_model=Token)
+def login_for_acess_token(form_data: OAuth2PasswordRequestForm = Depends(), session=Depends(init_session)):
+    user = session.scalar(select(User).where(User.email == form_data.username))
+    if not user or not hash_to_password(form_data.password, user.password):
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='Email or password are incorrects')
+    token = create_access_token({'sub': user.email})
+    return {'access_token': token, 'token_type': 'Bearer'}
