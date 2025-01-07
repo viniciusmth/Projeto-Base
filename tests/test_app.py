@@ -1,9 +1,6 @@
 from http import HTTPStatus
 
-
-def test_get_message(client):
-    response = client.get('/')
-    assert response.json() == {'message': 'oi, eu sou o chapeleiro'}
+from backend.schemas import UserPublic
 
 
 def test_get_database(client):
@@ -11,11 +8,17 @@ def test_get_database(client):
     assert response.json() == {'users': []}
 
 
-def test_put_user_that_doesnt_exist(client):
+def test_get_database_with_user(client, user):
+    user_public = UserPublic.model_validate(user).model_dump()
+    response = client.get('/users/')
+    assert response.json() == {'users': [user_public]}
+
+
+def test_put_user_that_doesnt_exist(client, user):
     response = client.put(
         '/users/-1',
         json={
-            'user': 'vinicius',
+            'username': 'vinicius',
             'email': 'email@email.com',
             'password': 'vinicius',
         },
@@ -37,45 +40,69 @@ def test_create_user(client):
     response = client.post(
         '/users/',
         json={
-            'user': 'vinicius',
-            'email': 'email@email.com',
-            'password': 'vinicius',
+            'username': 'vini',
+            'email': 'vini@vini.com',
+            'password': '123',
         },
     )
 
     assert response.status_code == HTTPStatus.CREATED
     assert response.json() == {
-        'user': 'vinicius',
-        'email': 'email@email.com',
+        'username': 'vini',
+        'email': 'vini@vini.com',
         'id': 1,
     }
 
 
-def test_put_user(client):
-    response = client.put(
-        '/users/1',
+def test_create_user_that_exists_user(client, user):
+    response = client.post(
+        '/users/',
         json={
-            'user': 'felipe',
+            'username': 'vini',
+            'email': 'vini@email.com',
+            'password': '123',
+        },
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.json() == {'detail': 'Usuário já cadastrado'}
+
+
+def test_create_user_that_exists_email(client, user):
+    response = client.post(
+        '/users/',
+        json={
+            'username': 'jorel',
+            'email': 'vini@vini.com',
+            'password': '123',
+        },
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.json() == {'detail': 'Email já cadastrado'}
+
+
+def test_put_user(client, user):
+    response = client.put(
+        f'/users/{user.id}',
+        json={
+            'username': 'felipe',
             'email': 'email2@email.com',
             'password': '123',
         },
     )
+    user_public = UserPublic.model_validate(user).model_dump()
     assert response.status_code == HTTPStatus.OK
-    assert response.json() == {
-        'id': 1,
-        'user': 'felipe',
-        'email': 'email2@email.com',
-    }
+    assert response.json() == user_public
 
 
-def test_get_username(client):
-    response = client.get('/users/1')
-    response.json() == {'user': 'felipe'}
+def test_get_username(client, user):
+    response = client.get(f'/users/{user.id}')
+    response.json() == {'user': f'{user.username}'}
 
 
-def test_delete_user(client):
-    delete_user = 1
-    response = client.delete(f'/users/{delete_user}')
+def test_delete_user(client, user):
+    response = client.delete(f'/users/{user.id}')
 
     assert response.status_code == HTTPStatus.OK
-    assert response.json() == {'message': f'Usuário {delete_user} deletado!'}
+    assert response.json() == {'message': f'User {user.username} deleted!'}
