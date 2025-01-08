@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, EmailStr
 
 
@@ -29,3 +31,4 @@ class UserName(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    expire: datetime

@@ -2,13 +2,14 @@ from http import HTTPStatus
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
+from jwt import decode
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.database import init_session
 from backend.models import User
 from backend.schemas import Message, Token, UserDB, UserList, UserName, UserPublic
-from backend.security import create_access_token, hash_to_password, password_to_hash, get_current_user
+from backend.security import SECRET_KEY, SECURITY_TYPE, create_access_token, get_current_user, hash_to_password, password_to_hash
 
 app = FastAPI()
 
@@ -21,13 +22,13 @@ def get_database(session: Session = Depends(init_session)):
 
 @app.post('/users/', status_code=HTTPStatus.CREATED, response_model=UserPublic)
 def register_user(user: UserDB, session=Depends(init_session)):
-    db_user = session.scalar(select(User).where((user.username == User.username) or (user.email == User.email)))
-    if db_user:
-        if db_user.username == user.username:
+    db_user = session.scalar(select(User).where((user.username == User.username) or (user.email == User.email)))  # Verificamos se existe um usuário com as mesmas credenciais existes no banco de dados
+    if db_user:  # Se existir
+        if db_user.username == user.username:  # Se o usuario que foi encontrado possui username igual
             raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='User already exists')
-        elif db_user.email == user.email:
+        elif db_user.email == user.email:  # Ou se o usuário encontrado possui email igual
             raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='Email already exists')
-    db_user = User(username=user.username, email=user.email, password=password_to_hash(user.password))
+    db_user = User(username=user.username, email=user.email, password=password_to_hash(user.password))  # Se não existir, criamos um user novo, com as credenciais fornecidas
     session.add(db_user)
     session.commit()
     session.refresh(db_user)
@@ -35,31 +36,27 @@ def register_user(user: UserDB, session=Depends(init_session)):
 
 
 @app.put('/users/{user_id}', response_model=UserPublic)
-def put_user(user_id: int, user: UserDB, session=Depends(init_session), is_logged=Depends(get_current_user)):
-    db_user = session.scalar(select(User).where(user_id == User.id))
-    if db_user:
-        if not session.scalar(select(User).where((user.username == User.username) or (user.email == User.email))):
-            db_user.username = user.username
-            db_user.email = user.email
-            db_user.password = password_to_hash(user.password)
-            session.commit()
-            session.refresh(db_user)
-        else:
-            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='User or email already exists')
+def put_user(user_id: int, user: UserDB, session=Depends(init_session), current_user=Depends(get_current_user)):
+    if user_id != current_user.id:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="it's not possible validate credentials")
+    if not session.scalar(select(User).where((user.username == User.username) or (user.email == User.email))):  # se não houver username ou email (unicos) parecido no banco de dados
+        current_user.username = user.username  # Executamos isso (ALTERAMOS APENAS O USUÁRIO IDENTIFICADO QUE FEZ A REQUISIÇÃO)
+        current_user.email = user.email
+        current_user.password = password_to_hash(user.password)
+        session.commit()
+        session.refresh(current_user)
     else:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="User doesn't exist")
-    return db_user
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='User or email already exists')
+    return current_user
 
 
 @app.delete('/users/{user_id}', status_code=HTTPStatus.OK, response_model=Message)
-def delete_user(user_id: int, session=Depends(init_session)):
-    db_user = session.scalar(select(User).where(user_id == User.id))
-    if db_user:
-        session.delete(db_user)
-        session.commit()
-        return {'message': f'User {db_user.username} deleted!'}
-    else:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="User doesn't exist")
+def delete_user(user_id: int, session=Depends(init_session), current_user=Depends(get_current_user)):
+    if user_id != current_user.id:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="it's not possible validate credentials")
+    session.delete(current_user)
+    session.commit()
+    return {'message': f'User {current_user.username} deleted!'}
 
 
 @app.get('/users/{user_id}', status_code=HTTPStatus.OK, response_model=UserName)
@@ -77,4 +74,5 @@ def login_for_acess_token(form_data: OAuth2PasswordRequestForm = Depends(), sess
     if not user or not hash_to_password(form_data.password, user.password):
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='Email or password are incorrects')
     token = create_access_token({'sub': user.email})
-    return {'access_token': token, 'token_type': 'Bearer'}
+    get_expire = decode(token, SECRET_KEY, SECURITY_TYPE)
+    return {'access_token': token, 'token_type': 'Bearer', 'expire': get_expire.get('exp')}

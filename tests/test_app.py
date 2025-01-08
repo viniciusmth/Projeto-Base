@@ -17,21 +17,22 @@ def test_get_database_with_user(client: TestClient, user: User):
     assert response.json() == {'users': [user_public]}
 
 
-def test_put_user_that_doesnt_exist(client: TestClient, user: User):
+def test_put_user_that_doesnt_exist(client: TestClient, user: User, token):
     response = client.put(
         '/users/-1',
+        headers={'Authorization': f'Bearer {token}'},
         json={
             'username': 'vinicius',
             'email': 'email@email.com',
             'password': 'vinicius',
         },
     )
-    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-def test_delete_user_that_doesnt_exist(client: TestClient):
-    response = client.delete('/users/-1')
-    assert response.status_code == HTTPStatus.NOT_FOUND
+def test_delete_user_that_doesnt_exist(client: TestClient, token):
+    response = client.delete('/users/-1', headers={'Authorization': f'Bearer {token}'})
+    assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 def test_get_user_that_doesnt_exist(client: TestClient):
@@ -71,9 +72,10 @@ def test_create_user_that_exists_email(client: TestClient, user: User):
     assert response.json() == {'detail': 'Email already exists'}
 
 
-def test_put_user(client: TestClient, user: User):
+def test_put_user(client: TestClient, user: User, token):
     response = client.put(
         f'/users/{user.id}',
+        headers={'Authorization': f'Bearer {token}'},
         json={
             'username': 'felipe',
             'email': 'email2@email.com',
@@ -90,8 +92,8 @@ def test_get_username(client: TestClient, user: User):
     response.json() == {'user': f'{user.username}'}
 
 
-def test_delete_user(client: TestClient, user: User):
-    response = client.delete(f'/users/{user.id}')
+def test_delete_user(client: TestClient, user: User, token):
+    response = client.delete(f'/users/{user.id}', headers={'Authorization': f'Bearer {token}'})
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {'message': f'User {user.username} deleted!'}
