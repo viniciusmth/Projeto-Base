@@ -1,23 +1,20 @@
 from http import HTTPStatus
 
-from fastapi.testclient import TestClient
-
-from backend.models import User
 from backend.schemas import UserPublic
 
 
-def test_get_database(client: TestClient):
+def test_get_database(client):
     response = client.get('/users/')
     assert response.json() == {'users': []}
 
 
-def test_get_database_with_user(client: TestClient, user: User):
+def test_get_database_with_user(client, user):
     user_public = UserPublic.model_validate(user).model_dump()
     response = client.get('/users/')
     assert response.json() == {'users': [user_public]}
 
 
-def test_put_user_that_doesnt_exist(client: TestClient, user: User, token):
+def test_put_user_that_doesnt_exist(client, user, token):
     response = client.put(
         '/users/-1',
         headers={'Authorization': f'Bearer {token}'},
@@ -30,17 +27,17 @@ def test_put_user_that_doesnt_exist(client: TestClient, user: User, token):
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-def test_delete_user_that_doesnt_exist(client: TestClient, token):
+def test_delete_user_that_doesnt_exist(client, token):
     response = client.delete('/users/-1', headers={'Authorization': f'Bearer {token}'})
     assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
-def test_get_user_that_doesnt_exist(client: TestClient):
+def test_get_user_that_doesnt_exist(client):
     response = client.get('/users/-1')
     assert response.status_code == HTTPStatus.NOT_FOUND
 
 
-def test_create_user(client: TestClient):
+def test_create_user(client):
     response = client.post(
         '/users/',
         json={
@@ -58,7 +55,7 @@ def test_create_user(client: TestClient):
     }
 
 
-def test_create_user_that_exists_email(client: TestClient, user: User):
+def test_create_user_that_exists_email(client, user):
     response = client.post(
         '/users/',
         json={
@@ -72,7 +69,7 @@ def test_create_user_that_exists_email(client: TestClient, user: User):
     assert response.json() == {'detail': 'Email already exists'}
 
 
-def test_put_user(client: TestClient, user: User, token):
+def test_put_user(client, user, token):
     response = client.put(
         f'/users/{user.id}',
         headers={'Authorization': f'Bearer {token}'},
@@ -87,21 +84,13 @@ def test_put_user(client: TestClient, user: User, token):
     assert response.json() == user_public
 
 
-def test_get_username(client: TestClient, user: User):
+def test_get_username(client, user):
     response = client.get(f'/users/{user.id}')
     response.json() == {'user': f'{user.username}'}
 
 
-def test_delete_user(client: TestClient, user: User, token):
+def test_delete_user(client, user, token):
     response = client.delete(f'/users/{user.id}', headers={'Authorization': f'Bearer {token}'})
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {'message': f'User {user.username} deleted!'}
-
-
-def test_autenticate_user(client: TestClient, user: User):
-    response = client.post('/token/', data={'username': user.email, 'password': user.clean_password})
-    token = response.json()
-    assert response.status_code == HTTPStatus.OK
-    assert token['access_token']
-    assert token['token_type'] == 'Bearer'

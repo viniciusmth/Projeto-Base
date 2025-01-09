@@ -10,14 +10,14 @@ from sqlalchemy.orm import Session
 
 from backend.database import init_session
 from backend.models import User
+from backend.settings import Settings
 
 context = PasswordHash.recommended()
 
-oauth_authorization = OAuth2PasswordBearer(tokenUrl='token')
-
-SECRET_KEY = '123'
-SECURITY_TYPE = 'HS256'
-TIME_FOR_EXPIRE_TOKEN = 30
+oauth_authorization = OAuth2PasswordBearer(tokenUrl='auth/token')
+SECRET_KEY = Settings().SECRET_KEY
+SECURITY_TYPE = Settings().SECURITY_TYPE
+TIME_FOR_EXPIRE_TOKEN = Settings().TIME_FOR_EXPIRE_TOKEN
 
 
 def password_to_hash(password: str):

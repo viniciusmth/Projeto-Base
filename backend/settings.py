@@ -5,3 +5,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
 
     DATABASE_URL: str
+    SECRET_KEY: str
+    SECURITY_TYPE: str
+    TIME_FOR_EXPIRE_TOKEN: int
