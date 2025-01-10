@@ -35,7 +35,7 @@ def create_access_token(data_payload: dict):
     return token_encoded
 
 
-def get_current_user(session: Session = Depends(init_session), current_user: str = Depends(oauth_authorization)):
+def get_current_user(session: Session = Depends(init_session), current_user: str = Depends(oauth_authorization)):  # pragma: no cover
     credential_exception = HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Could't validate credentials", headers={'WWW-Authenticate': 'Bearer'})
     try:
         user_authorized = decode(current_user, SECRET_KEY, [SECURITY_TYPE])

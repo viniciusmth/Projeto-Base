@@ -23,45 +23,36 @@ def get_database(session: T_Session):
 @route.post('/', status_code=HTTPStatus.CREATED, response_model=UserPublic)
 def register_user(user: UserDB, session: T_Session):
     db_user = session.scalar(select(User).where((user.username == User.username) or (user.email == User.email)))  # Verificamos se existe um usuário com as mesmas credenciais existes no banco de dados
-    if db_user:  # Se existir
-        if db_user.username == user.username:  # Se o usuario que foi encontrado possui username igual
-            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='User already exists')
-        elif db_user.email == user.email:  # Ou se o usuário encontrado possui email igual
-            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='Email already exists')
-    db_user = User(username=user.username, email=user.email, password=password_to_hash(user.password))  # Se não existir, criamos um user novo, com as credenciais fornecidas
-    session.add(db_user)
-    session.commit()
-    session.refresh(db_user)
+    if db_user:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='USER OR EMAIL ALREADY EXISTS')
+    else:
+        db_user = User(username=user.username, email=user.email, password=password_to_hash(user.password))  # Se não existir, criamos um user novo, com as credenciais fornecidas
+        session.add(db_user)
+        session.commit()
+        session.refresh(db_user)
     return db_user
 
 
 @route.put('/{user_id}', response_model=UserPublic)
 def put_user(user_id: int, user: UserDB, session: T_Session, current_user: T_Current_User):
     if user_id != current_user.id:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="it's not possible validate credentials")
+        raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail='NOT AUTHORIZATION')
     identic_user = session.scalar(select(User).where((user.username == User.username) or (user.email == User.email)))
-    if identic_user:
-        if identic_user.id == current_user.id:
-            current_user.username = user.username
-            current_user.email = user.email
-            current_user.password = password_to_hash(user.password)
-            session.commit()
-            session.refresh(current_user)
-        else:
-            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='User or email already exists')
-    else:
+    if identic_user and identic_user.id == current_user.id or not identic_user:
         current_user.username = user.username
         current_user.email = user.email
         current_user.password = password_to_hash(user.password)
         session.commit()
         session.refresh(current_user)
+    else:
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='User or email already exists')
     return current_user
 
 
 @route.delete('/{user_id}', status_code=HTTPStatus.OK, response_model=Message)
 def delete_user(user_id: int, session: T_Session, current_user: T_Current_User):
     if user_id != current_user.id:
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="it's not possible validate credentials")
+        raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail='NOT AUTHORIZATION')
     session.delete(current_user)
     session.commit()
     return {'message': f'User {current_user.username} deleted!'}

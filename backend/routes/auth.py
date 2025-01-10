@@ -21,7 +21,7 @@ T_Form = Annotated[OAuth2PasswordRequestForm, Depends()]
 def login_for_access_token(form_data: T_Form, session: T_Session):
     user = session.scalar(select(User).where(User.email == form_data.username))
     if not user or not hash_to_password(form_data.password, user.password):
-        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='Email or password are incorrects')
+        raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='EMAIL OR PASSWORD ARE INCORRECTS')
     token = create_access_token({'sub': user.email})
     get_expire = decode(token, SECRET_KEY, SECURITY_TYPE)
     return {'access_token': token, 'token_type': 'Bearer', 'expire': get_expire.get('exp')}
