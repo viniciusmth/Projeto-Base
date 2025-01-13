@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta, timezone
 from http import HTTPStatus
+from typing import Annotated
 
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from jwt import PyJWTError, decode, encode
+from jwt import ExpiredSignatureError, PyJWTError, decode, encode
 from pwdlib import PasswordHash
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -18,6 +19,10 @@ oauth_authorization = OAuth2PasswordBearer(tokenUrl='auth/token')
 SECRET_KEY = Settings().SECRET_KEY
 SECURITY_TYPE = Settings().SECURITY_TYPE
 TIME_FOR_EXPIRE_TOKEN = Settings().TIME_FOR_EXPIRE_TOKEN
+
+t_session = Annotated[Session, Depends(init_session)]
+t_current_user = Annotated[str, Depends(oauth_authorization)]
+credential_exception = HTTPException(status_code=HTTPStatus.UNAUTHORIZED, detail="COULD'T VALIDATE CREDENTIALS", headers={'WWW-Authenticate': 'Bearer'})
 
 
 def password_to_hash(password: str):
@@ -35,16 +40,15 @@ def create_access_token(data_payload: dict):
     return token_encoded
 
 
-def get_current_user(session: Session = Depends(init_session), current_user: str = Depends(oauth_authorization)):  # pragma: no cover
-    credential_exception = HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Could't validate credentials", headers={'WWW-Authenticate': 'Bearer'})
+def get_current_user(session: t_session, current_user: t_current_user):
     try:
         user_authorized = decode(current_user, SECRET_KEY, [SECURITY_TYPE])
-        user_authorized_email = user_authorized.get('sub')
-        if not user_authorized_email:
-            raise credential_exception
+        user_email = user_authorized.get('sub')
+    except ExpiredSignatureError:
+        raise ExpiredSignatureError
     except PyJWTError:
-        raise credential_exception
-    user_db = session.scalar(select(User).where(User.email == user_authorized_email))
+        raise PyJWTError
+    user_db = session.scalar(select(User).where(User.email == user_email))
     if not user_db:
         raise credential_exception
     return user_db
