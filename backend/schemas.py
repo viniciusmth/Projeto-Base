@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
+from backend.models import TodoState
+
 
 class Message(BaseModel):
     message: str
@@ -32,3 +34,13 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     expire: datetime
+
+
+class TodoSchema(BaseModel):
+    title: str
+    description: str
+    state: TodoState
+
+
+class TodoPublic(TodoSchema):
+    user_id: int
