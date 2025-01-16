@@ -34,6 +34,6 @@ class Todo:
     id: Mapped[int] = mapped_column(primary_key=True, init=False)
     title: Mapped[str]
     description: Mapped[str]
-    state: Mapped[TodoState]
+    state: Mapped[str]
 
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))

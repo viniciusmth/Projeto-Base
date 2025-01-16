@@ -44,3 +44,9 @@ class TodoSchema(BaseModel):
 
 class TodoPublic(TodoSchema):
     user_id: int
+    id: int
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TaskList(BaseModel):
+    tasks: list[TodoPublic]
