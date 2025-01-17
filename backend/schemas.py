@@ -45,8 +45,16 @@ class TodoSchema(BaseModel):
 class TodoPublic(TodoSchema):
     user_id: int
     id: int
+    created_at: datetime
+    updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
 
 class TaskList(BaseModel):
     tasks: list[TodoPublic]
+
+
+class TodoUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    state: TodoState | None = None

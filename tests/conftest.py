@@ -5,7 +5,7 @@ from factory.faker import Faker
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from sqlalchemy.pool import StaticPool
+from testcontainers.postgres import PostgresContainer
 
 from backend.app import app
 from backend.database import init_session
@@ -44,9 +44,16 @@ def client(session):
     app.dependency_overrides.clear()
 
 
+@pytest.fixture(scope='session')
+def engine():
+    with PostgresContainer('postgres:latest', driver='psycopg') as postgres:
+        _engine = create_engine(postgres.get_connection_url())
+        with _engine.begin():
+            yield _engine
+
+
 @pytest.fixture
-def session():
-    engine = create_engine('sqlite:///:memory:', poolclass=StaticPool, connect_args={'check_same_thread': False})
+def session(engine):
     mapper_registry.metadata.create_all(engine)
     with Session(engine) as session:
         yield session

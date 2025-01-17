@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import init_session
 from backend.models import Todo, TodoState, User
-from backend.schemas import TaskList, TodoPublic, TodoSchema
+from backend.schemas import TaskList, TodoPublic, TodoSchema, TodoUpdate
 from backend.security import get_current_user
 
 route = APIRouter(prefix='/todolist', tags=['to-do-list'])
@@ -47,7 +47,20 @@ def get_tasks(session: t_session, current_user: t_get_current_user, title: str |
 def delete_task(task_id: int, session: t_session, current_user: t_get_current_user):
     query = session.scalar(select(Todo).where(Todo.id == task_id, Todo.user_id == current_user.id))
     if not query:
-        raise HTTPException(status_code=HTTPStatus.FORBIDDEN, detail="YOU DON'T HAVE PERMISSION FOR THIS")
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="TASK DON'T EXISTS")
     session.delete(query)
     session.commit()
     return query
+
+
+@route.patch('/{task_id}', response_model=TodoPublic)
+def patch_task(task_id: int, current_user: t_get_current_user, session: t_session, todo: TodoUpdate):
+    db_todo = session.scalar(select(Todo).where(Todo.id == task_id, Todo.user_id == current_user.id))
+    if not db_todo:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="TASK DON'T EXISTS")
+    for key, value in todo.model_dump(exclude_unset=True).items():
+        setattr(db_todo, key, value)
+    session.add(db_todo)
+    session.commit()
+    session.refresh(db_todo)
+    return db_todo
