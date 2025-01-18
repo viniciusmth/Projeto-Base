@@ -5,8 +5,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-  steps:
-    - name: Instalando o Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13'
+    steps:
+      - name: Instalar o python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
