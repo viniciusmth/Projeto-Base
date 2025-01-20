@@ -65,6 +65,7 @@ def patch_task(task_id: int, current_user: t_get_current_user, session: t_sessio
     session.refresh(db_todo)
     return db_todo
 
+
 @route.delete('/delete_all')
 def delete(session: t_session, response_model=TaskList):
     session.delete(select(Todo))
